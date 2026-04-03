@@ -1,5 +1,6 @@
 # transport
 
+[![CI](https://github.com/mono83/transport/actions/workflows/ci.yml/badge.svg)](https://github.com/mono83/transport/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/mono83/transport.svg)](https://pkg.go.dev/github.com/mono83/transport)
 [![Go Report Card](https://goreportcard.com/badge/github.com/mono83/transport)](https://goreportcard.com/report/github.com/mono83/transport)
 ![Go version](https://img.shields.io/badge/go-1.21+-blue)
