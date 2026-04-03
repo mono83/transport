@@ -1,5 +1,9 @@
 # transport
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/mono83/transport.svg)](https://pkg.go.dev/github.com/mono83/transport)
+[![Go Report Card](https://goreportcard.com/badge/github.com/mono83/transport)](https://goreportcard.com/report/github.com/mono83/transport)
+![Go version](https://img.shields.io/badge/go-1.21+-blue)
+
 > **Experimental** — API may change without notice.
 
 A small, generic HTTP transport abstraction for Go. It separates the concern of *how* a request is executed (the transport layer) from *what* is executed (the call layer), making HTTP clients easy to compose, test, and extend.
@@ -28,7 +32,7 @@ The root package defines the generic primitives. Sub-packages provide a concrete
 ```
 github.com/mono83/transport
 ├── http/                       Transport interface + read/write helpers + Stub
-│   ├── native/                 net/http-backed Transport implementation
+│   ├── native/                 net/http-backed Transport implementation with transparent gzip/deflate decompression
 │   ├── filters/                Status-code guards (Require200, Require2xx)
 │   ├── json/                   JSON request/response codec
 │   ├── xml/                    XML request/response codec
@@ -163,11 +167,39 @@ headers.WithAcceptJSON()
 headers.WithXMLContentType()
 headers.WithAcceptXML()
 
+// Compression — pairs with the native transport's transparent decompression
+headers.WithAcceptEncodingGzipDeflate()
+
 // Per-request timeout (native transport)
 options.Timeout(5 * time.Second)
 ```
 
 Constructor-level options (passed to `native.New`) are merged with per-call options at request time.
+
+## Transparent decompression
+
+The native transport automatically decompresses response bodies based on the `Content-Encoding` response header. Decompression is invisible to callers — response body helpers (`ReadJSON`, `ReadBytes`, etc.) always receive plain text.
+
+| `Content-Encoding` | Handling |
+|---|---|
+| `gzip` | Decompressed via `compress/gzip` |
+| `deflate` | Auto-detects zlib framing (RFC 1950) or raw DEFLATE (RFC 1951) |
+| anything else | Passed through unchanged |
+
+To advertise compression support to the server, pass `WithAcceptEncodingGzipDeflate` as an option:
+
+```go
+result, err := json.ReadJSON[T](t.ExecuteRequest(ctx, "GET", url, nil,
+    headers.WithAcceptEncodingGzipDeflate()))
+```
+
+Or set it once at construction time so every request from that transport includes it:
+
+```go
+t := native.New(headers.WithAcceptEncodingGzipDeflate())
+```
+
+Decompression happens before logging, so the log sink always receives decoded bytes.
 
 ## Logging
 
@@ -205,14 +237,15 @@ t.ExecuteRequest(ctx, "POST", url, form,
 
 ## Testing
 
-`http.Stub` is a ready-made `Transport` implementation for unit tests. Set the fields you care about; everything else is ignored. The same stub is safe to reuse across multiple calls.
+Three ready-made `Transport` implementations are available for unit tests. All are safe to reuse across multiple calls.
+
+`http.Stub` — full control over status, headers, and body:
 
 ```go
 stub := http.Stub{
     Status:       200,
     ResponseData: []byte(`{"id":1}`),
 }
-
 result, err := json.ReadJSON[MyType](stub.ExecuteRequest(ctx, "GET", "/anything", nil))
 ```
 
@@ -222,4 +255,12 @@ Simulate a transport-level error:
 stub := http.Stub{Error: errors.New("connection refused")}
 _, err := json.ReadJSON[MyType](stub.ExecuteRequest(ctx, "GET", "/anything", nil))
 // err != nil
+```
+
+`http.StubBytes` and `http.StubString` — lightweight stubs for when only the body matters:
+
+```go
+
+result, err := json.ReadJSON[MyType](http.StubBytes(`{"id":1}`).ExecuteRequest(ctx, "GET", "/", nil))
+result, err := json.ReadJSON[MyType](http.StubString(`{"id":1}`).ExecuteRequest(ctx, "GET", "/", nil))
 ```
