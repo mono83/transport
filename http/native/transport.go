@@ -38,6 +38,9 @@ func (n nativeTransport) ExecuteRequest(
 	// Building request
 	req, err := http2.NewRequestWithContext(ctx, method, url, reqData)
 	if err != nil {
+		if reqData != nil {
+			_ = reqData.Close()
+		}
 		return 0, nil, nil, errors.Join(
 			errors.New("transport:native: error building request"),
 			err,
