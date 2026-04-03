@@ -76,19 +76,25 @@ func (n nativeTransport) ExecuteRequest(
 		)
 	}
 
-	// Preparing data for log
+	// Transparently decompress response body based on Content-Encoding.
+	decompressed, err := decompressBody(resp.Header, resp.Body)
+	if err != nil {
+		return 0, nil, nil, err
+	}
+
+	// Wrap with tee logger after decompression so logged bytes are decoded.
 	var respBuf bytes.Buffer
 	var respData io.ReadCloser
 	if n.sink != nil {
 		respData = &teeOnCompleteReadCloser{
-			Reader: io.TeeReader(resp.Body, &respBuf),
-			closer: resp.Body,
+			Reader: io.TeeReader(decompressed, &respBuf),
+			closer: decompressed,
 			onComplete: sync.OnceFunc(func() {
 				n.sink(method, url, req.Header, resp.Header, reqBuf.Bytes(), respBuf.Bytes(), resp.StatusCode, time.Since(before), nil)
 			}),
 		}
 	} else {
-		respData = resp.Body
+		respData = decompressed
 	}
 
 	return resp.StatusCode, resp.Header, respData, nil

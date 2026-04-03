@@ -45,3 +45,10 @@ func WithHTMLContentType() SetHeaderOption { return WithContentType(contentTypeH
 
 // WithOctetStreamContentType returns a [SetHeaderOption] that sets Content-Type to application/octet-stream.
 func WithOctetStreamContentType() SetHeaderOption { return WithContentType(contentTypeOctetStream) }
+
+// WithAcceptEncodingGzipDeflate returns a [SetHeaderOption] that sets Accept-Encoding to "gzip, deflate",
+// signalling that the caller can handle compressed responses. The native transport decompresses
+// gzip and deflate responses transparently, so this option pairs naturally with it.
+func WithAcceptEncodingGzipDeflate() SetHeaderOption {
+	return WithHeader("Accept-Encoding", "gzip, deflate")
+}
