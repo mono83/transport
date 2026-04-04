@@ -1,6 +1,10 @@
 package headers
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/mono83/transport/http/agents"
+)
 
 // SetHeaderOption is a call option that sets a single HTTP request header,
 // replacing any existing values for that header name.
@@ -17,3 +21,7 @@ func WithHeader(n, v string) SetHeaderOption { return SetHeaderOption{n, v} }
 
 // WithUserAgent returns a [SetHeaderOption] that sets the User-Agent header to v.
 func WithUserAgent(v string) SetHeaderOption { return WithHeader("User-Agent", v) }
+
+// WithRandomUserAgent returns a [SetHeaderOption] that sets the User-Agent header
+// to a randomly selected value from the built-in list of popular user agents.
+func WithRandomUserAgent() SetHeaderOption { return WithUserAgent(agents.Random()) }
